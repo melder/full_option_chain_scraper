@@ -25,16 +25,32 @@ Hopefully the motivation is more clear now: to construct a granular history of i
 ## Requirements
 
 1. Python 3.11.4
-2. pipenv
+2. pyenv + pipenv
 3. redis7 server
 4. robinhood account with options enabled
 5. Optional: AWS east instance. API requests are about 2-3x faster than running local
 
 ## Installation
 
-TBD
+1. Get pyenv and pipenv and install python 3.11.4
+2. Clone, init environment, init submodules:
 
-## Configurations:
+```
+$ git clone git@github.com:melder/iv_scraper.git
+$ cd iv_scraper
+$ pipenv install
+$ git submodule update --init --recursive
+```
+
+3. In the config directory create settings.yml / vendors.yml and set them up with the appropriate values
+4. To test
+
+```
+$ pipenv shell
+$ python scraper.py
+```
+
+## Configuration
 
 ### settings.yml
 
