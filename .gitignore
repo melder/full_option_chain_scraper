@@ -1,0 +1,5 @@
+.pylintrc
+*.csv
+*.png
+TODO.md
+.vscode
