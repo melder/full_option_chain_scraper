@@ -199,12 +199,13 @@ class ExpirationDateMapper:
             ExpirationDateMapper.__blacklist = self.blacklisted_tickers() or ["1X2Y3Z4"]
 
     def get_set_expr(self):
-        for _ in range(self.retry_count):
-            if res := dh.next_expr_for_ticker(self.ticker):
-                if self.ticker not in (self.semi_weeklies + self.dailies):
-                    redh.set_expr_date(self.ticker, res)
-                return res
-            time.sleep(self.retry_sleep)
+        if self.ticker not in self.__blacklist:
+            for _ in range(self.retry_count):
+                if res := dh.next_expr_for_ticker(self.ticker):
+                    if self.ticker not in (self.semi_weeklies + self.dailies):
+                        redh.set_expr_date(self.ticker, res)
+                    return res
+                time.sleep(self.retry_sleep)
 
     def blacklisted_tickers(self):
         d = redh.blacklist_all_failure_counts()
