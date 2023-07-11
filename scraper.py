@@ -189,6 +189,7 @@ class ExpirationDateMapper:
         for ticker in get_all_options():
             cls(ticker).get_set_expr()
 
+    # TODO: purge weeklies / monthlies separately
     @classmethod
     def purge(cls):
         redh.purge_expr_dates()
@@ -218,15 +219,20 @@ class ExpirationDateMapper:
 
 
 if __name__ == "__main__":
-    COMMANDS = ["scrape", "purge-expr"]
+    COMMANDS = ["scrape", "purge-exprs"]
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(f"Usage: python scraper.py <{' / '.join(COMMANDS)}>")
         sys.exit(0)
 
     if sys.argv[1] == "scrape":
+        if not dh.is_market_open_now():
+            print("Market is closed")
+            sys.exit(0)
         IvScraper.exec()
         sys.exit(0)
 
-    if sys.argv[1] == "purge-expr":
-        ExpirationDateMapper.purge()
+    if sys.argv[1] == "purge-exprs":
+        exprs = [v for _, v in redh.get_all_expr_dates().items()]
+        if datetime.now().date().isoformat() in exprs:
+            ExpirationDateMapper.purge()
         sys.exit(0)
