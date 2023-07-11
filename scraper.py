@@ -2,6 +2,7 @@ from config import config  # pylint: disable=wrong-import-order
 
 import csv
 import os
+import sys
 import time
 from datetime import datetime
 from pprint import pprint  # pylint: disable=unused-import
@@ -189,6 +190,10 @@ class ExpirationDateMapper:
             cls(ticker).get_set_expr()
 
     @classmethod
+    def purge(cls):
+        redh.purge_expr_dates()
+
+    @classmethod
     def get_all_exprs(cls):
         return redh.get_all_expr_dates()
 
@@ -213,4 +218,15 @@ class ExpirationDateMapper:
 
 
 if __name__ == "__main__":
-    IvScraper.exec()
+    COMMANDS = ["scrape", "purge-expr"]
+    if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
+        print(f"Usage: python scraper.py <{' / '.join(COMMANDS)}>")
+        sys.exit(0)
+
+    if sys.argv[1] == "scrape":
+        IvScraper.exec()
+        sys.exit(0)
+
+    if sys.argv[1] == "purge-expr":
+        ExpirationDateMapper.purge()
+        sys.exit(0)
