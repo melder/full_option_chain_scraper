@@ -79,10 +79,11 @@ redis:
 ```
 CRON_TZ=America/New_York
 
-# note will only scrape when market is open
 45 9-14 * * 1-5 ec2-user cd ~/iv_history; pipenv run python scraper.py scrape
-
-# will only purge cached expiration dates on day of expiration
-# set to run multiple times to greatly reduce odds that cache persists and messes things up
 * 1 * * 1-5 ec2-user cd ~/iv_history; pipenv run python scraper.py purge-exprs
 ```
+
+Notes:
+
+1. Scraper will only scrape when market is open (unless using scrape-force command)
+2. Expiration dates cache will only be purged on the day of expiration. Since it is a very lightweight operation, it is set to run every minute for an hour to greatly reduce odds that cache persists and messes things up.

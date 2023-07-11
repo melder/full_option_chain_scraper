@@ -219,13 +219,13 @@ class ExpirationDateMapper:
 
 
 if __name__ == "__main__":
-    COMMANDS = ["scrape", "purge-exprs"]
+    COMMANDS = ["scrape", "scrape-force", "purge-exprs"]
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(f"Usage: python scraper.py <{' / '.join(COMMANDS)}>")
         sys.exit(0)
 
-    if sys.argv[1] == "scrape":
-        if not dh.is_market_open_now():
+    if sys.argv[1] in ["scrape", "scrape-force"]:
+        if not dh.is_market_open_now() and sys.argv[1] == "scrape":
             print("Market is closed")
             sys.exit(0)
         IvScraper.exec()
