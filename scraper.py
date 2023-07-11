@@ -71,8 +71,6 @@ class IvScraper:
                 write_to_csv(csv_path, line)
 
     def __init__(self, ticker, expr):
-        if not expr:
-            print(f"{ticker} DID NOT HIT CACHE")
         self.ticker = ticker
         self.expr = expr or ExpirationDateMapper(ticker).get_set_expr()
 
@@ -204,6 +202,7 @@ class ExpirationDateMapper:
         if not ExpirationDateMapper.__blacklist:
             ExpirationDateMapper.__blacklist = self.blacklisted_tickers() or ["1X2Y3Z4"]
 
+    # TODO: clean this shit up
     def get_set_expr(self):
         if self.ticker not in self.__blacklist:
             for _ in range(self.retry_count):
