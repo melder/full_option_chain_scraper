@@ -74,13 +74,21 @@ redis:
   port: 6379
 ```
 
+### Commands
+
+* scrape - self explanitory
+* scrape-force - scrapes regardless of market open status
+* purge-exprs - retrieving expirations is API heavy so cache is utilized. This clears it
+* audit-blacklist - iterates through blacklisted items to see if any should be rotated out
+
 ### crontab
 
 ```
 CRON_TZ=America/New_York
 
-45 9-14 * * 1-5 ec2-user cd ~/iv_history; pipenv run python scraper.py scrape
-* 1 * * 1-5 ec2-user cd ~/iv_history; pipenv run python scraper.py purge-exprs
+45 9-14 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
+*  1    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py purge-exprs
+0  20   * * 0   ec2-user cd ~/iv_scraper; pipenv run python scraper.py audit-blacklist
 ```
 
 Notes:

@@ -32,6 +32,94 @@ def get_all_options():
     return [tokens[0] for tokens in read_csv(_OPTIONS_CSV_FILE)]
 
 
+class Blacklist:
+    """
+    Filter out symbols that violate blacklist rules:
+
+    1. Brokerage does not offer options for SYMBOL
+    2. Price of SYMBOL is less than $2.50 or greater than $1k
+
+    More rules to come for sure
+
+    Also has "audit" method to de-blacklist symbols that no
+    longer violate rules
+    """
+
+    threshold = 15
+    rule_2_bad_price_score = 1
+
+    # in cents
+    price_min = 250
+    price_max = 100000
+    price_range = range(price_min, price_max + 1)
+
+    # Blacklist from blacklist
+    blacklist_exempt = ["CGC", "SPCE", "SNDL", "FCEL", "TLRY"]
+
+    @classmethod
+    def audit(cls):
+        """
+        remove symbols that no longer violate blacklist rules
+        """
+
+        global ignore_backlist  # pylint: disable=global-statement
+        ignore_backlist = True
+
+        for ticker in [k for k, _ in blacklist.items()]:
+            scraper = IvScraper(ticker, expr=None)
+            scraper.scrape()
+
+            # blacklisted from blacklist
+            if ticker in cls.blacklist_exempt:
+                redh.blacklist_remove_ticker(ticker)
+                continue
+
+            # rule 1
+            if not scraper.ivs:
+                continue
+
+            # rule 2
+            if round(scraper.price * 100) not in cls.price_range:
+                continue
+
+            redh.blacklist_remove_ticker(ticker)
+
+    def __init__(self, scraper_obj):
+        """
+        ticker data is a hash comprising of scraped data
+        """
+        self.scraper_obj = scraper_obj
+        self.ticker = scraper_obj.ticker
+        self.score = scraper_obj.blacklist_score
+
+    def exec(self):
+        if not ignore_backlist and self.ticker not in self.blacklist_exempt:
+            self.scrape_fail()
+            self.extreme_price()
+
+    def add_to_blacklist(self):
+        """
+        score is value on how aggressively a symbol should
+        be blacklisted. For example failure to retrieve symbol
+        data could imply a network error rather than there
+        are simply no options available for it. A score is
+        associated and incremented to each symbol and once
+        it breaches a threshold it is no longer scraped
+        """
+        redh.blacklist_append(self.ticker, self.score)
+
+    # rule 1
+    def scrape_fail(self):
+        if not self.scraper_obj.ivs:
+            self.add_to_blacklist()
+
+    # rule 2
+    def extreme_price(self):
+        if round(self.scraper_obj.price * 100) not in self.price_range:
+            self.score += self.rule_2_bad_price_score
+            self.add_to_blacklist()
+
+
 class IvScraper:
     """
     1. Scrapes implied volatility of options closest to
@@ -52,11 +140,6 @@ class IvScraper:
     retry_count = 3
     retry_sleep = 1
 
-    # failures are stored in redis. if number of failures exceeds this value
-    # the symbol is blacklisted. blacklist will be periodically purged
-    __blacklist = []
-    blacklist_threshold = retry_count * 5
-
     @classmethod
     def exec(cls):
         csv_path = os.path.join(
@@ -65,10 +148,14 @@ class IvScraper:
 
         exprs = ExpirationDateMapper.get_all_exprs()
         for ticker in get_all_options():
-            scraper = cls(ticker, exprs.get(ticker))
-            scraper.scrape()
-            if line := scraper.format_line():
-                write_to_csv(csv_path, line)
+            try:
+                scraper = cls(ticker, exprs.get(ticker))
+                scraper.scrape()
+                if line := scraper.format_line():
+                    write_to_csv(csv_path, line)
+            except Exception:  # pylint: disable=broad-exception-caught
+                # TODO: add some logging
+                pass
 
     def __init__(self, ticker, expr):
         self.ticker = ticker
@@ -79,37 +166,33 @@ class IvScraper:
         self.ivs = []
         self.timestamp = -1
 
-        # initialize blacklist once via class variable
-        # if blacklist isn't initialized, insert a dummy symbol
-        # to guarantee single fetch per runtime
-        if not IvScraper.__blacklist:
-            IvScraper.__blacklist = self.blacklisted_tickers() or ["1X2Y3Z4"]
+        self.blacklist_score = 0
 
     def scrape(self):
-        if self.ticker in self.__blacklist:
+        if not (self.ticker and self.expr):
+            return None
+        if not ignore_backlist and self.ticker in blacklisted_tickers:
             return None
 
         res = []
-        fail_count = 0
         for _ in range(self.retry_count):
             if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
-                fail_count += 1
+                self.blacklist_score += 1
                 time.sleep(self.retry_sleep)
                 continue
 
             self.process_chain(res)
-            break
+            Blacklist(self).exec()
 
-        if fail_count > 0:
-            redh.blacklist_append(self.ticker, fail_count)
+            return True
 
         return None
 
     def process_chain(self, chain, depth=1):
-        self.price = hood.get_price(self.ticker)
-        if self.price:
+        if price := hood.get_price(self.ticker):
+            self.price = float(price)
             sorted_chain = sorted(
-                chain, key=lambda x: abs(float(self.price) - float(x["strike_price"]))
+                chain, key=lambda x: abs(self.price - float(x["strike_price"]))
             )
             for i, o in enumerate(sorted_chain):
                 if (strike := o.get("strike_price")) and (o_type := o.get("type")):
@@ -126,16 +209,12 @@ class IvScraper:
         return [
             self.ticker,
             self.expr,
-            self.price,
+            str(self.price),
             str(mean(self.ivs)),
             str(median(self.ivs)),
             " ".join(self.strikes),
             str(dh.absolute_seconds_until_expr(self.expr)),
         ]
-
-    def blacklisted_tickers(self):
-        d = redh.blacklist_all_failure_counts()
-        return [k for k, v in d.items() if int(v) >= self.blacklist_threshold]
 
 
 class ExpirationDateMapper:
@@ -170,17 +249,13 @@ class ExpirationDateMapper:
     updated end of day after market close.
     """
 
+    # special cases
+    semi_weeklies = ["IWM"]
+    dailies = ["SPY", "QQQ"]
+
     # scrape attempts assuming network/rate limit/etc errors
     retry_count = 5
     retry_sleep = 15
-
-    # some duplication from IvScraper class
-    # TODO: add blacklist class?
-    __blacklist = []
-    blacklist_threshold = IvScraper.blacklist_threshold
-
-    semi_weeklies = ["IWM"]
-    dailies = ["SPY", "QQQ"]
 
     @classmethod
     def populate(cls):
@@ -196,29 +271,39 @@ class ExpirationDateMapper:
     def get_all_exprs(cls):
         return redh.get_all_expr_dates()
 
+    @classmethod
+    def get_all_exprs_dates(cls, compress=False):
+        res = [v for _, v in cls.get_all_exprs().items()]
+        return res if not compress else list(set(res))
+
     def __init__(self, ticker):
         self.ticker = ticker
+        if ignore_backlist:
+            self.retry_sleep = 1
+            self.retry_count = 3
 
-        if not ExpirationDateMapper.__blacklist:
-            ExpirationDateMapper.__blacklist = self.blacklisted_tickers() or ["1X2Y3Z4"]
-
-    # TODO: clean this shit up
     def get_set_expr(self):
-        if self.ticker not in self.__blacklist:
-            for _ in range(self.retry_count):
-                if res := dh.next_expr_for_ticker(self.ticker):
-                    if self.ticker not in (self.semi_weeklies + self.dailies):
-                        redh.set_expr_date(self.ticker, res)
-                    return res
-                time.sleep(self.retry_sleep)
+        if not ignore_backlist and self.ticker in blacklisted_tickers:
+            return None
 
-    def blacklisted_tickers(self):
-        d = redh.blacklist_all_failure_counts()
-        return [k for k, v in d.items() if int(v) >= self.blacklist_threshold]
+        for _ in range(self.retry_count):
+            if res := dh.next_expr_for_ticker(self.ticker):
+                if self.ticker not in (self.semi_weeklies + self.dailies):
+                    redh.set_expr_date(self.ticker, res)
+                return res
+            time.sleep(self.retry_sleep)
 
+        return None
+
+
+blacklist = redh.blacklist_all_failure_counts()
+blacklisted_tickers = [k for k, v in blacklist.items() if int(v) >= Blacklist.threshold]
+
+# TODO: gut feeling that this is poor design. rethink this
+ignore_backlist = False  # pylint: disable=invalid-name
 
 if __name__ == "__main__":
-    COMMANDS = ["scrape", "scrape-force", "purge-exprs"]
+    COMMANDS = ["scrape", "scrape-force", "purge-exprs", "audit-blacklist"]
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(f"Usage: python scraper.py <{' / '.join(COMMANDS)}>")
         sys.exit(0)
@@ -231,7 +316,11 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if sys.argv[1] == "purge-exprs":
-        exprs = [v for _, v in redh.get_all_expr_dates().items()]
-        if datetime.now().date().isoformat() in exprs:
+        TODAY_DATE_ISO = datetime.now().date().isoformat()
+        if TODAY_DATE_ISO in ExpirationDateMapper.get_all_exprs_dates():
             ExpirationDateMapper.purge()
+        sys.exit(0)
+
+    if sys.argv[1] == "audit-blacklist":
+        Blacklist.audit()
         sys.exit(0)

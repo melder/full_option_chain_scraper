@@ -25,8 +25,12 @@ def blacklist_all_failure_counts():
     return r.hgetall(_BLACKLIST_KEY)
 
 
+def blacklist_remove_ticker(ticker):
+    return r.hdel(_BLACKLIST_KEY, ticker)
+
+
 def blacklist_purge():
-    r.delete(_BLACKLIST_KEY)
+    return r.delete(_BLACKLIST_KEY)
 
 
 ###########################
