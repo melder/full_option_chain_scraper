@@ -50,6 +50,13 @@ $ pipenv shell
 $ python scraper.py scrape
 ```
 
+## Commands
+
+* scrape - self explanitory
+* scrape-force - scrapes regardless of market open status
+* purge-exprs - retrieving expirations is API heavy so cache is utilized. This clears it
+* audit-blacklist - iterates through blacklisted items to see if any should be rotated out
+
 ## Configuration
 
 ### settings.yml
@@ -73,13 +80,6 @@ redis:
   host: localhost
   port: 6379
 ```
-
-### Commands
-
-* scrape - self explanitory
-* scrape-force - scrapes regardless of market open status
-* purge-exprs - retrieving expirations is API heavy so cache is utilized. This clears it
-* audit-blacklist - iterates through blacklisted items to see if any should be rotated out
 
 ### crontab
 
