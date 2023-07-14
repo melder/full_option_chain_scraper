@@ -36,7 +36,7 @@ class Blacklist:
     """
     Filter out symbols that violate blacklist rules:
 
-    1. Brokerage does not offer options for SYMBOL
+    1. Brokerage did not return options for SYMBOL
     2. Price of SYMBOL is less than $2.50 or greater than $1k
 
     More rules to come for sure
@@ -46,7 +46,7 @@ class Blacklist:
     """
 
     threshold = 15
-    rule_1_no_options_score = 3
+    rule_1_scrape_fail_score = 3
     rule_2_bad_price_score = 1
 
     # in cents
@@ -91,12 +91,14 @@ class Blacklist:
         """
         self.scraper_obj = scraper_obj
         self.ticker = scraper_obj.ticker
-        self.score = scraper_obj.blacklist_score
+        self.score = 0
 
     def exec(self):
+        # TODO: this hurts my eyes to look at
         if not ignore_backlist and self.ticker not in self.blacklist_exempt:
             self.scrape_fail()
-            self.extreme_price()
+            if self.score == 0:  # failed scrape won't have price data
+                self.extreme_price()
             if self.score > 0:
                 self.add_to_blacklist()
 
@@ -114,7 +116,7 @@ class Blacklist:
     # rule 1
     def scrape_fail(self):
         if not self.scraper_obj.ivs:
-            self.score += self.rule_1_no_options_score
+            self.score += self.rule_1_scrape_fail_score
 
     # rule 2
     def extreme_price(self):
@@ -169,8 +171,6 @@ class IvScraper:
         self.ivs = []
         self.timestamp = -1
 
-        self.blacklist_score = 0
-
     def scrape(self):
         if not (self.ticker and self.expr):
             return None
@@ -180,7 +180,6 @@ class IvScraper:
         res = []
         for _ in range(self.retry_count):
             if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
-                self.blacklist_score += 1
                 time.sleep(self.retry_sleep)
                 continue
 
