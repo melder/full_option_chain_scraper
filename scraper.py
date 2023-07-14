@@ -46,6 +46,7 @@ class Blacklist:
     """
 
     threshold = 15
+    rule_1_no_options_score = 3
     rule_2_bad_price_score = 1
 
     # in cents
@@ -96,6 +97,8 @@ class Blacklist:
         if not ignore_backlist and self.ticker not in self.blacklist_exempt:
             self.scrape_fail()
             self.extreme_price()
+            if self.score > 0:
+                self.add_to_blacklist()
 
     def add_to_blacklist(self):
         """
@@ -111,13 +114,12 @@ class Blacklist:
     # rule 1
     def scrape_fail(self):
         if not self.scraper_obj.ivs:
-            self.add_to_blacklist()
+            self.score += self.rule_1_no_options_score
 
     # rule 2
     def extreme_price(self):
         if round(self.scraper_obj.price * 100) not in self.price_range:
             self.score += self.rule_2_bad_price_score
-            self.add_to_blacklist()
 
 
 class IvScraper:
