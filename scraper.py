@@ -155,6 +155,7 @@ class IvScraper:
                 scraper.scrape()
                 if line := scraper.format_line():
                     write_to_csv(csv_path, line)
+                Blacklist(scraper).exec()
             except Exception:  # pylint: disable=broad-exception-caught
                 # TODO: add some logging
                 pass
@@ -184,8 +185,6 @@ class IvScraper:
                 continue
 
             self.process_chain(res)
-            Blacklist(self).exec()
-
             return True
 
         return None
