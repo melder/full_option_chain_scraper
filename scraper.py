@@ -152,6 +152,8 @@ class IvScraper:
 
         exprs = ExpirationDateMapper.get_all_exprs()
         for ticker in get_all_options():
+            if not ignore_backlist and ticker in blacklisted_tickers:
+                continue
             try:
                 scraper = cls(ticker, exprs.get(ticker))
                 scraper.scrape()
@@ -173,8 +175,6 @@ class IvScraper:
 
     def scrape(self):
         if not (self.ticker and self.expr):
-            return None
-        if not ignore_backlist and self.ticker in blacklisted_tickers:
             return None
 
         res = []
