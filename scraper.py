@@ -55,7 +55,7 @@ class Blacklist:
     price_range = range(price_min, price_max + 1)
 
     # Blacklist from blacklist
-    blacklist_exempt = ["SPCE", "SNDL", "FCEL", "TLRY"]
+    blacklist_exempt = ["SPCE", "SNDL", "FCEL", "TLRY", "AMC"]
 
     @classmethod
     def audit(cls):
