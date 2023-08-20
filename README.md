@@ -99,3 +99,14 @@ Notes:
 ## Background Jobs
 
 To lay the foundation for scaling and optimization, a job queue is utilized instead of sequential scraping
+
+```
+# rq + multiprocessing
+python start_workers.py
+
+# worker
+python worker.py
+
+# worker background
+nohup python worker.py &
+```
