@@ -14,7 +14,9 @@ for ticker in get_all_options():
     expr = ExpirationDateMapper(ticker).get_set_expr()
     iv_scraper = IvScraper(ticker, expr)
     queue.enqueue(
-        scrape_ticker_job, args=(iv_scraper, timestamp), retry=Retry(max=6, interval=10)
+        scrape_ticker_job,
+        args=(iv_scraper, timestamp),
+        retry=Retry(max=6, interval=[5]),
     )
 
 
