@@ -23,7 +23,8 @@ for ticker in get_all_options():
     queue.enqueue(
         scrape_ticker_job,
         args=(iv_scraper, timestamp),
-        retry=Retry(max=6, interval=[5]),
+        retry=Retry(max=6, interval=20),
+        result_ttl=0,
     )
 
 
