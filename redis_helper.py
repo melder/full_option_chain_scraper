@@ -54,3 +54,13 @@ def set_expr_date(ticker, expr):
 
 def purge_expr_dates():
     r.delete(_EXPIRATION_DATE_KEY)
+
+
+#####################
+# AUXILIARY HELPERS #
+#####################
+
+
+def purge_glob(glob):
+    for k in r.keys(glob):
+        r.delete(k)

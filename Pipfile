@@ -13,6 +13,8 @@ python-dateutil = "*"
 pytz = "*"
 numpy = "*"
 redis = "*"
+rq = "*"
+multiprocess = "*"
 
 [dev-packages]
 

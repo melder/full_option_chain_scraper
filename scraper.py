@@ -154,15 +154,15 @@ class IvScraper:
         for ticker in get_all_options():
             if not ignore_backlist and ticker in blacklisted_tickers:
                 continue
-            try:
-                scraper = cls(ticker, exprs.get(ticker))
-                scraper.scrape()
-                if line := scraper.format_line():
-                    write_to_csv(csv_path, line)
-                Blacklist(scraper).exec()
-            except Exception:  # pylint: disable=broad-exception-caught
-                # TODO: add some logging
-                pass
+            # try:
+            scraper = cls(ticker, exprs.get(ticker))
+            scraper.scrape()
+            if line := scraper.format_line():
+                write_to_csv(csv_path, line)
+            Blacklist(scraper).exec()
+            # except Exception:  # pylint: disable=broad-exception-caught
+            #     # TODO: add some logging
+            #     pass
 
     def __init__(self, ticker, expr):
         self.ticker = ticker
@@ -178,13 +178,13 @@ class IvScraper:
             return None
 
         res = []
-        for _ in range(self.retry_count):
-            if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
-                time.sleep(self.retry_sleep)
-                continue
+        # for _ in range(self.retry_count):
+        if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
+            # time.sleep(self.retry_sleep)
+            raise Exception("Error fetching option chain")
 
-            self.process_chain(res)
-            return True
+        self.process_chain(res)
+        return True
 
         return None
 
@@ -215,6 +215,12 @@ class IvScraper:
             " ".join(self.strikes),
             str(dh.absolute_seconds_until_expr(self.expr)),
         ]
+
+    def scrape_and_write(self, timestamp):
+        csv_path = os.path.join(_OUTPUT_FOLDER, str(timestamp) + ".csv")
+        self.scrape()
+        if line := self.format_line():
+            write_to_csv(csv_path, line)
 
 
 class ExpirationDateMapper:
@@ -254,8 +260,8 @@ class ExpirationDateMapper:
     dailies = ["SPY", "QQQ"]
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 5
-    retry_sleep = 15
+    retry_count = 3
+    retry_sleep = 1
 
     @classmethod
     def populate(cls):

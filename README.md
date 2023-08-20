@@ -95,3 +95,7 @@ Notes:
 
 1. Scraper will only scrape when market is open (unless using scrape-force command)
 2. Expiration dates cache will only be purged on the day of expiration. Since it is a very lightweight operation, it is set to run every minute for an hour to greatly reduce odds that cache persists and messes things up.
+
+## Background Jobs
+
+To lay the foundation for scaling and optimization, a job queue is utilized instead of sequential scraping
