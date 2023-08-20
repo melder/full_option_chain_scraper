@@ -10,20 +10,21 @@ from scraper import (
     ExpirationDateMapper,
 )
 
-redis_conn = config.redis
-queue = Queue(connection=config.redis)
+redis_conn = config.redis_worker
+queue = Queue(connection=redis_conn)
 
 # Enqueue a job
 timestamp = str(round(datetime.timestamp(datetime.utcnow())))
+exprs = ExpirationDateMapper.get_all_exprs()
 for ticker in get_all_options():
     if ticker in blacklisted_tickers:
         continue
-    expr = ExpirationDateMapper(ticker).get_set_expr()
+    expr = exprs.get(ticker)
     iv_scraper = IvScraper(ticker, expr)
     queue.enqueue(
         scrape_ticker_job,
         args=(iv_scraper, timestamp),
-        retry=Retry(max=6, interval=20),
+        retry=Retry(max=3, interval=120),
         result_ttl=0,
     )
 

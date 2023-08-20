@@ -6,9 +6,9 @@ import sys
 
 def start_worker():
     if sys.platform != "darwin":
-        os.system("rq worker-pool")
+        os.system("rq worker --with-scheduler")
     else:
-        os.system("OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool")
+        os.system("OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker --with-scheduler")
 
 
 def main():
