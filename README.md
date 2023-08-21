@@ -101,12 +101,10 @@ Notes:
 To lay the foundation for scaling and optimization, a job queue is utilized instead of sequential scraping
 
 ```
-# rq + multiprocessing
-python start_workers.py
+# queuing: 
+python queue_jobs.py
 
 # worker
-python worker.py
-
-# worker background
-nohup python worker.py &
+# X = number of parallel workers
+rq worker-pool -b -n X
 ```

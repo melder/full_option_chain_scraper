@@ -142,8 +142,9 @@ class IvScraper:
 
     # scrape attempts assuming network/rate limit/etc errors
     retry_count = 3
-    retry_sleep = 1
+    retry_sleep = 5
 
+    # deprecate now that bg jobs are used?
     @classmethod
     def exec(cls):
         csv_path = os.path.join(
@@ -154,15 +155,15 @@ class IvScraper:
         for ticker in get_all_options():
             if not ignore_backlist and ticker in blacklisted_tickers:
                 continue
-            # try:
-            scraper = cls(ticker, exprs.get(ticker))
-            scraper.scrape()
-            if line := scraper.format_line():
-                write_to_csv(csv_path, line)
-            Blacklist(scraper).exec()
-            # except Exception:  # pylint: disable=broad-exception-caught
-            #     # TODO: add some logging
-            #     pass
+            try:
+                scraper = cls(ticker, exprs.get(ticker))
+                scraper.scrape()
+                if line := scraper.format_line():
+                    write_to_csv(csv_path, line)
+                Blacklist(scraper).exec()
+            except Exception:  # pylint: disable=broad-exception-caught
+                # TODO: add some logging
+                pass
 
     def __init__(self, ticker, expr):
         self.ticker = ticker
@@ -178,13 +179,12 @@ class IvScraper:
             return None
 
         res = []
-        # for _ in range(self.retry_count):
-        if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
-            # time.sleep(self.retry_sleep)
-            raise Exception("Error fetching option chain")
-
-        self.process_chain(res)
-        return True
+        for _ in range(self.retry_count):
+            if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
+                time.sleep(self.retry_sleep)
+                continue
+            self.process_chain(res)
+            return True
 
         return None
 
@@ -261,7 +261,7 @@ class ExpirationDateMapper:
 
     # scrape attempts assuming network/rate limit/etc errors
     retry_count = 3
-    retry_sleep = 1
+    retry_sleep = 5
 
     @classmethod
     def populate(cls):
@@ -287,6 +287,9 @@ class ExpirationDateMapper:
         if ignore_backlist:
             self.retry_sleep = 1
             self.retry_count = 3
+
+    def get_expr(self):
+        return redh.get_expr_date(self.ticker) or self.get_set_expr()
 
     def get_set_expr(self):
         if not ignore_backlist and self.ticker in blacklisted_tickers:
