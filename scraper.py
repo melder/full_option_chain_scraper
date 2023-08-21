@@ -221,6 +221,7 @@ class IvScraper:
         self.scrape()
         if line := self.format_line():
             write_to_csv(csv_path, line)
+        Blacklist(self).exec()
 
 
 class ExpirationDateMapper:
