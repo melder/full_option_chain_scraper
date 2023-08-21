@@ -1,6 +1,3 @@
 [submodule "symbols_options_csvs"]
 	path = csv
 	url = git@github.com:melder/symbols_options_csvs.git
-[submodule "settings_scaffold"]
-	path = config
-	url = git@github.com:melder/settings_scaffold.git
