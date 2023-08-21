@@ -289,6 +289,8 @@ class ExpirationDateMapper:
             self.retry_count = 3
 
     def get_expr(self):
+        if not ignore_backlist and self.ticker in blacklisted_tickers:
+            return None
         return redh.get_expr_date(self.ticker) or self.get_set_expr()
 
     def get_set_expr(self):

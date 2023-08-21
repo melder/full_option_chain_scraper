@@ -15,7 +15,10 @@ timestamp = str(round(datetime.timestamp(datetime.utcnow())))
 for _ticker in get_all_options():
     if _ticker in blacklisted_tickers:
         continue
-    iv_scraper = IvScraper(_ticker, ExpirationDateMapper(_ticker).get_expr())
+    if not (expr := ExpirationDateMapper(_ticker).get_expr()):
+        continue
+
+    iv_scraper = IvScraper(_ticker, expr)
     queue.enqueue(
         scrape_ticker_job,
         args=(iv_scraper, timestamp),
