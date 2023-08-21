@@ -12,7 +12,7 @@ import date_helpers as dh
 import redis_helper as redh
 import hood
 
-# import queue_job
+import queue_job
 
 _OUTPUT_FOLDER = config.conf.output_csv_path
 _OPTIONS_CSV_FILE = config.conf.options_symbols_csv_path
@@ -326,8 +326,7 @@ if __name__ == "__main__":
         if not dh.is_market_open_now() and sys.argv[1] == "scrape":
             print("Market is closed")
             sys.exit(0)
-        # TODO: fix
-        os.system("python queue.job.py")
+        queue_job.main()
         os.system(f"rq worker-pool -b -n {config.conf.workers}")
         sys.exit(0)
 
