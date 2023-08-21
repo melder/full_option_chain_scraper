@@ -326,9 +326,14 @@ if __name__ == "__main__":
         if not dh.is_market_open_now() and sys.argv[1] == "scrape":
             print("Market is closed")
             sys.exit(0)
-        # TODO: fix
+        # TODO: fix circular dependency
         os.system("python queue_job.py")
-        os.system(f"rq worker-pool -b -n {config.conf.workers}")
+        if sys.platform != "darwin":
+            os.system(f"rq worker-pool -b -n {config.conf.workers}")
+        else:
+            os.system(
+                f"OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b -n {config.conf.workers}"
+            )
         sys.exit(0)
 
     if sys.argv[1] == "purge-exprs":
