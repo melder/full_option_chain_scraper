@@ -15,6 +15,7 @@ numpy = "*"
 redis = "*"
 rq = "*"
 multiprocess = "*"
+pymongo = "*"
 
 [dev-packages]
 

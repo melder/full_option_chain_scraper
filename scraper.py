@@ -12,6 +12,8 @@ import date_helpers as dh
 import redis_helper as redh
 import hood
 
+from models.option import Option
+
 # import queue_job
 
 _OUTPUT_FOLDER = config.conf.output_csv_path
@@ -95,14 +97,14 @@ class Blacklist:
         self.ticker = scraper_obj.ticker
         self.score = 0
 
-    def exec(self):
-        # TODO: this hurts my eyes to look at
-        if not ignore_backlist and self.ticker not in self.blacklist_exempt:
-            self.scrape_fail()
-            if self.score == 0:  # failed scrape won't have price data
-                self.extreme_price()
-            if self.score > 0:
-                self.add_to_blacklist()
+    # def exec(self):
+    #     # TODO: this hurts my eyes to look at
+    #     if not ignore_backlist and self.ticker not in self.blacklist_exempt:
+    #         self.scrape_fail()
+    #         if self.score == 0:  # failed scrape won't have price data
+    #             self.extreme_price()
+    #         if self.score > 0:
+    #             self.add_to_blacklist()
 
     def add_to_blacklist(self):
         """
@@ -143,8 +145,8 @@ class IvScraper:
     """
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 3
-    retry_sleep = 5
+    retry_count = 5
+    retry_sleep = 1
 
     # deprecate now that bg jobs are used?
     @classmethod
@@ -167,7 +169,7 @@ class IvScraper:
                 # TODO: add some logging
                 pass
 
-    def __init__(self, ticker, expr):
+    def __init__(self, ticker, expr, scrape_start_timestamp=None):
         self.ticker = ticker
         self.expr = expr or ExpirationDateMapper(ticker).get_set_expr()
 
@@ -175,6 +177,9 @@ class IvScraper:
         self.strikes = []
         self.ivs = []
         self.timestamp = -1
+
+        self.scrape_start_timestamp = scrape_start_timestamp
+        self.option = Option(config.mongo)
 
     def scrape(self):
         if not (self.ticker and self.expr):
@@ -185,7 +190,7 @@ class IvScraper:
             if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
                 time.sleep(self.retry_sleep)
                 continue
-            self.process_chain(res)
+            self.process_chain_mongo(res)
             return True
 
         return None
@@ -202,6 +207,15 @@ class IvScraper:
                     self.strikes.append(f"{round(float(strike),2)}{postfix}")
                 if (iv := o.get("implied_volatility")) and i < 4 * depth:
                     self.ivs.append(float(iv))
+
+    def process_chain_mongo(self, chain, depth=1):
+        if price := hood.get_price(self.ticker):
+            self.price = float(price)
+            sorted_chain = sorted(
+                chain, key=lambda x: abs(self.price - float(x["strike_price"]))
+            )
+            if len(sorted_chain) == 4 * depth:
+                self.insert_options_to_db(sorted_chain)
 
     # SYMBOL, EXPR, PRICE, AVG IV, MEDIAN IV, STRIKES, TIMESTAMP
     def format_line(self):
@@ -224,6 +238,27 @@ class IvScraper:
         if line := self.format_line():
             write_to_csv(csv_path, line)
         Blacklist(self).exec()
+
+    # option properties
+    # ticker (str)
+    # expiration (ISO date str)
+    # expires_at (datetime)
+    # created_at (datetime)
+    # scraper_timestamp (int)
+    def insert_options_to_db(self, chain):
+        if self.scrape_start_timestamp:
+            document = {
+                "scraper_timestamp": self.scrape_start_timestamp,
+                "ticker": self.ticker,
+                "expiration": self.expr,
+                "price": self.price,
+                "expires_at": dh.market_closes_at(self.expr),
+                "absolute_seconds_remaining": dh.absolute_seconds_until_expr(self.expr),
+                "market_seconds_remaining": dh.market_seconds_until_expr(self.expr),
+                "created_at": datetime.utcnow(),
+                "options": chain,
+            }
+            self.option.create(document)
 
 
 class ExpirationDateMapper:
@@ -264,7 +299,7 @@ class ExpirationDateMapper:
 
     # scrape attempts assuming network/rate limit/etc errors
     retry_count = 3
-    retry_sleep = 5
+    retry_sleep = 1
 
     @classmethod
     def populate(cls):

@@ -7,11 +7,13 @@ from scraper import (
     ExpirationDateMapper,
     config,
 )
-from jobs.scrape_job import scrape_ticker_job
+from jobs import scrape_job
 
 
 def main():
-    queue = Queue(connection=config.redis_worker)
+    queue = Queue(
+        connection=config.redis_worker,
+    )
     timestamp = str(round(datetime.timestamp(datetime.utcnow())))
     for _ticker in get_all_options():
         if _ticker in blacklisted_tickers:
@@ -19,10 +21,10 @@ def main():
         if not (expr := ExpirationDateMapper(_ticker).get_expr()):
             continue
 
-        iv_scraper = IvScraper(_ticker, expr)
+        iv_scraper = IvScraper(_ticker, expr, timestamp)
         queue.enqueue(
-            scrape_ticker_job,
-            args=(iv_scraper, timestamp),
+            scrape_job.scrape_ticker_job,
+            args=(iv_scraper,),
             result_ttl=0,
         )
 
