@@ -86,8 +86,6 @@ class IvScraper:
     def scrape(self):
         if not (self.ticker and self.expr):
             return None
-        if self.ticker in Blacklist.blacklisted_tickers():
-            return None
 
         for _ in range(self.retry_count):
             if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
