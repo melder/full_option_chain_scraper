@@ -79,7 +79,9 @@ class IvScraper:
 
         self.scrape_start_timestamp = scrape_start_timestamp
 
-        self.option_collection = client[config.conf.mongo.database] if client else None
+        self.option_collection = (
+            Option(client[config.conf.mongo.database]) if client else None
+        )
 
     def scrape(self):
         if not (self.ticker and self.expr):
@@ -92,7 +94,7 @@ class IvScraper:
             if not (sorted_chain := self.process_chain(res)):
                 time.sleep(self.retry_sleep)
                 continue
-            if self.option_collection.client:
+            if self.option_collection:
                 self.insert_options_to_db(sorted_chain)
             self.scraped = True
             return True
@@ -137,7 +139,7 @@ class IvScraper:
         - options (array of dict JSON responses HOOD API returns)
         """
 
-        if self.scrape_start_timestamp and self.option_collection.client:
+        if self.scrape_start_timestamp and self.option_collection:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
                 "ticker": self.ticker,
