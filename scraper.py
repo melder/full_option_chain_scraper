@@ -155,7 +155,13 @@ class IvScraper:
 
 
 if __name__ == "__main__":
-    COMMANDS = ["scrape", "scrape-force", "purge-exprs", "audit-blacklist"]
+    COMMANDS = [
+        "scrape",
+        "scrape-force",
+        "populate-exprs",
+        "purge-exprs",
+        "audit-blacklist",
+    ]
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(f"Usage: python scraper.py <{' / '.join(COMMANDS)}>")
         sys.exit(0)
@@ -173,6 +179,10 @@ if __name__ == "__main__":
                 f"OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b -n {config.conf.workers}"
             )
         sys.exit(0)
+
+    if sys.argv[1] == "populate-exprs":
+        ExpirationDateCache.populate(get_all_options())
+        sys.exit()
 
     if sys.argv[1] == "purge-exprs":
         TODAY_DATE_ISO = datetime.now().date().isoformat()

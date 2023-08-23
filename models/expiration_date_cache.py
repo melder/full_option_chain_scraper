@@ -40,13 +40,14 @@ class ExpirationDateCache:
     dailies = ["SPY", "QQQ"]
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 3
-    retry_sleep = 1
+    retry_count = 12
+    retry_sleep = 10.1
 
     @classmethod
     def populate(cls, tickers):
         for ticker in tickers:
-            cls(ticker).get_set_expr()
+            print(ticker)
+            cls(ticker).get_expr()
 
     # TODO: purge weeklies / monthlies separately
     @classmethod

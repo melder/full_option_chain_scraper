@@ -58,7 +58,8 @@ $ python scraper.py scrape
 
 * scrape - self explanitory
 * scrape-force - scrapes regardless of market open status
-* purge-exprs - retrieving expirations is API heavy so cache is utilized. This clears it
+* populate-exprs - retrieving expirations is API heavy so cache is utilized. This is intended to prepopulate before scraping to avoid rate limit slowdowns
+* purge-exprs - Deletes expiration date cache on weekly / monthly expiration days
 * audit-blacklist - iterates through blacklisted items to see if any should be rotated out
 
 ## Configuration
@@ -98,6 +99,7 @@ CRON_TZ=America/New_York
 
 45 9-15 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
 *  1    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py purge-exprs
+1  2    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py populate-exprs
 0  20   * * 0   ec2-user cd ~/iv_scraper; pipenv run python scraper.py audit-blacklist
 ```
 
