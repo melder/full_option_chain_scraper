@@ -6,17 +6,15 @@ import sys
 import time
 from datetime import datetime
 from pprint import pprint  # pylint: disable=unused-import
-from statistics import mean, median
 
-import date_helpers as dh
-import redis_helper as redh
-import hood
+import helpers.date_helpers as dh
+import helpers.hood_helpers as hood
 
+from models.blacklist import Blacklist
+from models.expiration_date_cache import ExpirationDateCache
 from models.option import Option
 
-# import queue_job
 
-_OUTPUT_FOLDER = config.conf.output_csv_path
 _OPTIONS_CSV_FILE = config.conf.options_symbols_csv_path
 
 
@@ -26,6 +24,7 @@ def read_csv(file_path, delimiter="\t"):
         return list(csv_reader)
 
 
+# deprecated, but keeping on hand for potential future export to csv functions
 def write_to_csv(file_path, data, delimiter="\t"):
     with open(file_path, "a", newline="", encoding="utf-8") as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=delimiter)
@@ -36,222 +35,111 @@ def get_all_options():
     return [tokens[0] for tokens in read_csv(_OPTIONS_CSV_FILE)]
 
 
-class Blacklist:
-    """
-    Filter out symbols that violate blacklist rules:
-
-    1. Brokerage did not return options for SYMBOL
-    2. Price of SYMBOL is less than $2.50 or greater than $1k
-
-    More rules to come for sure
-
-    Also has "audit" method to de-blacklist symbols that no
-    longer violate rules
-    """
-
-    threshold = 15
-    rule_1_scrape_fail_score = 3
-    rule_2_bad_price_score = 1
-
-    # in cents
-    price_min = 500
-    price_max = 100000
-    price_range = range(price_min, price_max + 1)
-
-    # Blacklist from blacklist
-    blacklist_exempt = ["SPCE", "SNDL", "FCEL", "TLRY", "AMC", "BB", "NOK"]
-
-    @classmethod
-    def audit(cls):
-        """
-        remove symbols that no longer violate blacklist rules
-        """
-
-        global ignore_backlist  # pylint: disable=global-statement
-        ignore_backlist = True
-
-        for ticker in [k for k, _ in blacklist.items()]:
-            scraper = IvScraper(ticker, expr=None)
-            scraper.scrape()
-
-            # blacklisted from blacklist
-            if ticker in cls.blacklist_exempt:
-                redh.blacklist_remove_ticker(ticker)
-                continue
-
-            # rule 1
-            if not scraper.ivs:
-                continue
-
-            # rule 2
-            if round(scraper.price * 100) not in cls.price_range:
-                continue
-
-            redh.blacklist_remove_ticker(ticker)
-
-    def __init__(self, scraper_obj):
-        """
-        ticker data is a hash comprising of scraped data
-        """
-        self.scraper_obj = scraper_obj
-        self.ticker = scraper_obj.ticker
-        self.score = 0
-
-    # def exec(self):
-    #     # TODO: this hurts my eyes to look at
-    #     if not ignore_backlist and self.ticker not in self.blacklist_exempt:
-    #         self.scrape_fail()
-    #         if self.score == 0:  # failed scrape won't have price data
-    #             self.extreme_price()
-    #         if self.score > 0:
-    #             self.add_to_blacklist()
-
-    def add_to_blacklist(self):
-        """
-        score is value on how aggressively a symbol should
-        be blacklisted. For example failure to retrieve symbol
-        data could imply a network error rather than there
-        are simply no options available for it. A score is
-        associated and incremented to each symbol and once
-        it breaches a threshold it is no longer scraped
-        """
-        redh.blacklist_append(self.ticker, self.score)
-
-    # rule 1
-    def scrape_fail(self):
-        if not self.scraper_obj.ivs:
-            self.score += self.rule_1_scrape_fail_score
-
-    # rule 2
-    def extreme_price(self):
-        if round(self.scraper_obj.price * 100) not in self.price_range:
-            self.score += self.rule_2_bad_price_score
-
-
 class IvScraper:
     """
     1. Scrapes implied volatility of options closest to
     at the money (minimum 4). E.g. for stock at $99.5
     with $1 strikes it will look at: 99C, 100C, 99P, 100P
 
-    2. CSV structure (no header):
-    SYMBOL, EXPR, PRICE, AVG IV, MEDIAN IV, STRIKES, TIMESTAMP
+    2. Persist option API json in datastore (mongodb in this case)
 
-    Example:
-    SPY, 2023-07-11, 438.71, 0.0920215, 0.0916695, 438C 439C 438P 439P, 1688891462
-
-    3. Dynamically generates blacklist assuming options not
+    3. Dynamically generates ticker blacklist assuming options not
     available on designated platform (robinhood in this case).
     """
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 5
-    retry_sleep = 1
+    retry_count = 12
+    retry_sleep = 10.1
 
-    # deprecate now that bg jobs are used?
+    # blocking scrape not utilizing background workers
     @classmethod
-    def exec(cls):
-        csv_path = os.path.join(
-            _OUTPUT_FOLDER, str(round(datetime.timestamp(datetime.utcnow()))) + ".csv"
-        )
-
-        exprs = ExpirationDateMapper.get_all_exprs()
+    def exec_blocking(cls, ignore_blacklist=False):
+        exprs = ExpirationDateCache.get_all_exprs()
+        timestamp = str(round(datetime.timestamp(datetime.utcnow())))
+        db = config.mongo_db()
         for ticker in get_all_options():
-            if not ignore_backlist and ticker in blacklisted_tickers:
+            print(ticker)
+            if not ignore_blacklist and ticker in Blacklist.blacklisted_tickers():
                 continue
             try:
-                scraper = cls(ticker, exprs.get(ticker))
+                scraper = cls(ticker, exprs.get(ticker), timestamp, db)
                 scraper.scrape()
-                if line := scraper.format_line():
-                    write_to_csv(csv_path, line)
                 Blacklist(scraper).exec()
             except Exception:  # pylint: disable=broad-exception-caught
                 # TODO: add some logging
                 pass
 
-    def __init__(self, ticker, expr, scrape_start_timestamp=None):
+    def __init__(self, ticker, expr, scrape_start_timestamp=None, db=None):
         self.ticker = ticker
-        self.expr = expr or ExpirationDateMapper(ticker).get_set_expr()
+        self.expr = expr or ExpirationDateCache(ticker).get_set_expr()
 
-        self.price = -1
-        self.strikes = []
-        self.ivs = []
-        self.timestamp = -1
+        self.price = 0
+        self.scraped = False  # for blacklisting
 
         self.scrape_start_timestamp = scrape_start_timestamp
-        self.option = Option(config.mongo)
+        self.option = Option(db)
 
-    def scrape(self):
+    def scrape(self, insert_to_db=True):
         if not (self.ticker and self.expr):
             return None
 
-        res = []
         for _ in range(self.retry_count):
             if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
                 time.sleep(self.retry_sleep)
                 continue
-            self.process_chain_mongo(res)
+            if not (sorted_chain := self.process_chain(res)):
+                time.sleep(self.retry_sleep)
+                continue
+            if insert_to_db:
+                self.insert_options_to_db(sorted_chain)
+            self.scraped = True
             return True
 
         return None
 
     def process_chain(self, chain, depth=1):
-        if price := hood.get_price(self.ticker):
-            self.price = float(price)
-            sorted_chain = sorted(
-                chain, key=lambda x: abs(self.price - float(x["strike_price"]))
-            )
-            for i, o in enumerate(sorted_chain):
-                if (strike := o.get("strike_price")) and (o_type := o.get("type")):
-                    postfix = "C" if o_type.lower() == "call" else "P"
-                    self.strikes.append(f"{round(float(strike),2)}{postfix}")
-                if (iv := o.get("implied_volatility")) and i < 4 * depth:
-                    self.ivs.append(float(iv))
+        if not (price := hood.get_price(self.ticker)):
+            return None
 
-    def process_chain_mongo(self, chain, depth=1):
-        if price := hood.get_price(self.ticker):
-            self.price = float(price)
-            sorted_chain = sorted(
-                chain, key=lambda x: abs(self.price - float(x["strike_price"]))
-            )
-            if len(sorted_chain) == 4 * depth:
-                self.insert_options_to_db(sorted_chain)
+        self.price = float(price)
+        sorted_chain = sorted(
+            chain, key=lambda x: abs(self.price - float(x["strike_price"]))
+        )
+        if len(sorted_chain) == 4 * depth:
+            return sorted_chain
 
-    # SYMBOL, EXPR, PRICE, AVG IV, MEDIAN IV, STRIKES, TIMESTAMP
-    def format_line(self):
-        if not self.ivs:
-            return []
+        return None
 
-        return [
-            self.ticker,
-            self.expr,
-            str(self.price),
-            str(mean(self.ivs)),
-            str(median(self.ivs)),
-            " ".join(self.strikes),
-            str(dh.absolute_seconds_until_expr(self.expr)),
-        ]
-
-    def scrape_and_write(self, timestamp):
-        csv_path = os.path.join(_OUTPUT_FOLDER, str(timestamp) + ".csv")
-        self.scrape()
-        if line := self.format_line():
-            write_to_csv(csv_path, line)
-        Blacklist(self).exec()
-
-    # option properties
-    # ticker (str)
-    # expiration (ISO date str)
-    # expires_at (datetime)
-    # created_at (datetime)
-    # scraper_timestamp (int)
+    # v2 TODO:
+    # 1. move to model
+    # 2. prune properties
+    # 3. batch insert or move to low priority background worker
     def insert_options_to_db(self, chain):
+        """
+        v1: Currently shoving entire option JS returned by hood API,
+        of which there are 4 (or 4 * depth), into single document which
+        represents the state of a singular ticker scraped.
+        In other words, scraping 4000 tickers for option data will generate
+        4000 documents with 16000 (4 * 4000) embedded option objects.
+
+        Document properties:
+
+        - scraper_timestamp (int)
+        - ticker (str)
+        - expiration (ISO8601 date str)
+        - price (float)
+        - expires_at (datetime)
+        - absolute_seconds_remaining (int)
+        - market_seconds_remaining (int)
+        - created_at (datetime)
+        - options (array of dict JSON responses HOOD API returns)
+        """
         if self.scrape_start_timestamp:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
                 "ticker": self.ticker,
                 "expiration": self.expr,
-                "price": self.price,
+                "price": float(self.price),
                 "expires_at": dh.market_closes_at(self.expr),
                 "absolute_seconds_remaining": dh.absolute_seconds_until_expr(self.expr),
                 "market_seconds_remaining": dh.market_seconds_until_expr(self.expr),
@@ -260,96 +148,6 @@ class IvScraper:
             }
             self.option.create(document)
 
-
-class ExpirationDateMapper:
-    """
-    1. Designates which expiration date to look at
-    for each symbol:
-
-    a. Monthlies
-    b. Weeklies
-    c. Semi-weeklies
-    d. Dailies
-
-    2. Scraper is intended to fetch IV relative to
-    the closest expiration date except on the
-    expiration date itself. I.e if it's a friday
-    when weeklies generally expire, the scraper
-    will collect next friday's data.
-
-    Since semi-weeklies / dailies comprise only a
-    handful of symbols (ETFs mostly) they will
-    remain hardcoded for the time being.
-
-    3. The mapper should be purged / initialized
-    weekly as securities occassionaly drift between
-    weekly <-> monthly buckets. Generally best done
-    on Sunday because symbols CSVs are processed on
-    Saturdays and uploaded to git by Saturday evening:
-
-    https://github.com/melder/symbols_options_csvs
-
-    Semi-weeklies + dailies expirations should be
-    updated end of day after market close.
-    """
-
-    # special cases
-    semi_weeklies = ["IWM"]
-    dailies = ["SPY", "QQQ"]
-
-    # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 3
-    retry_sleep = 1
-
-    @classmethod
-    def populate(cls):
-        for ticker in get_all_options():
-            cls(ticker).get_set_expr()
-
-    # TODO: purge weeklies / monthlies separately
-    @classmethod
-    def purge(cls):
-        redh.purge_expr_dates()
-
-    @classmethod
-    def get_all_exprs(cls):
-        return redh.get_all_expr_dates()
-
-    @classmethod
-    def get_all_exprs_dates(cls, compress=False):
-        res = [v for _, v in cls.get_all_exprs().items()]
-        return res if not compress else list(set(res))
-
-    def __init__(self, ticker):
-        self.ticker = ticker
-        if ignore_backlist:
-            self.retry_sleep = 1
-            self.retry_count = 3
-
-    def get_expr(self):
-        if not ignore_backlist and self.ticker in blacklisted_tickers:
-            return None
-        return redh.get_expr_date(self.ticker) or self.get_set_expr()
-
-    def get_set_expr(self):
-        if not ignore_backlist and self.ticker in blacklisted_tickers:
-            return None
-
-        for _ in range(self.retry_count):
-            if res := dh.next_expr_for_ticker(self.ticker):
-                if self.ticker not in (self.semi_weeklies + self.dailies):
-                    redh.set_expr_date(self.ticker, res)
-                return res
-            time.sleep(self.retry_sleep)
-
-        return None
-
-
-blacklist = redh.blacklist_all_failure_counts()
-blacklisted_tickers = [k for k, v in blacklist.items() if int(v) >= Blacklist.threshold]
-
-# TODO: gut feeling that this is poor design. rethink this
-ignore_backlist = False  # pylint: disable=invalid-name
 
 if __name__ == "__main__":
     COMMANDS = ["scrape", "scrape-force", "purge-exprs", "audit-blacklist"]
@@ -373,8 +171,8 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "purge-exprs":
         TODAY_DATE_ISO = datetime.now().date().isoformat()
-        if TODAY_DATE_ISO in ExpirationDateMapper.get_all_exprs_dates():
-            ExpirationDateMapper.purge()
+        if TODAY_DATE_ISO in ExpirationDateCache.get_all_exprs_dates():
+            ExpirationDateCache.purge()
         sys.exit(0)
 
     if sys.argv[1] == "audit-blacklist":

@@ -28,8 +28,6 @@ class DictAsMember(dict):
 
 conf = DictAsMember(parse_yaml_settings() | parse_yaml_vendors())
 
-version = conf.version
-
 if conf.get("discord_webhooks"):
     discord_webhooks = conf.discord_webhooks
 
@@ -55,3 +53,31 @@ if conf.get("mongo"):
     mongo_db = conf.mongo.database
 
     mongo = pymongo.MongoClient(mongo_host, mongo_port)[mongo_db]
+
+
+def polygon_api_key():
+    return conf.polygon.api_key
+
+
+def redis_client(decode_responses=True):
+    if not conf.get("redis"):
+        return None
+
+    from redis import Redis
+
+    return Redis(
+        host=conf.redis.host, port=conf.redis.port, decode_responses=decode_responses
+    )
+
+
+def mongo_client():
+    if not conf.get("mongo"):
+        return None
+
+    from pymongo import MongoClient
+
+    return MongoClient(conf.mongo.host, conf.mongo.port)
+
+
+def mongo_db():
+    return mongo_client()[conf.mongo.database]

@@ -1,5 +1,5 @@
 import robin_stocks.robinhood as rh
-import auth
+from helpers import auth
 
 auth.hood()
 

@@ -25,8 +25,8 @@ class Option:
         self.validate_properties(docs)
 
         if isinstance(docs, dict):
-            return self.db.insert_one(docs)
-        return self.db.insert_many(docs)
+            return self.collection.insert_one(docs)
+        return self.collection.insert_many(docs)
 
     def find(self, query=None):
         return list(self.collection.find(query))
