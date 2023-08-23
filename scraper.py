@@ -92,7 +92,7 @@ class IvScraper:
             if not (sorted_chain := self.process_chain(res)):
                 time.sleep(self.retry_sleep)
                 continue
-            if self.option_collection:
+            if self.option_collection.client:
                 self.insert_options_to_db(sorted_chain)
             self.scraped = True
             return True
@@ -137,7 +137,7 @@ class IvScraper:
         - options (array of dict JSON responses HOOD API returns)
         """
 
-        if self.scrape_start_timestamp:
+        if self.scrape_start_timestamp and self.option_collection.client:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
                 "ticker": self.ticker,
