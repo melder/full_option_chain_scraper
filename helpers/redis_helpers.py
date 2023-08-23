@@ -4,7 +4,7 @@ from helpers.general_helpers import key_join
 r = config.redis
 
 
-_NAMESPACE = "iv_history"
+_NAMESPACE = "iv_scraper"
 
 #######################
 # BLACKLISTED OPTIONS #
