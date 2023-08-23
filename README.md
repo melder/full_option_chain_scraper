@@ -1,8 +1,10 @@
 # IV Scraper
 
-Iterates through all available options and scrapes implied volatility values of the 4 options closest to the spot price (calls + puts above/below spot). Outputs average and median value to a CSV file. Default expiration date is the earliest one. So for a weekly it's generally friday. For a daily (SPY, QQQ) it will be the next market day. Scraper will collect IV data up to the day of expiration. On expiration day it will roll over to next expiration date. Using weeklies as an example: if run on Friday (the day the option expires) the scraper will instead scrape the option chain expiring on the next Friday.
+* Iterates through all available options and scrapes implied volatility values of the 4 options closest to the spot price (calls + puts above/below spot). 
+* For those options stores their data in mongodb (IV, greeks, expiration, volume, open interest, bids / asks + prices, and much more ...)
+* Default expiration date is set to nearest one. So for a weekly it's generally friday. For a daily (SPY, QQQ) it will be the next market day. Scraper will collect IV data up to the day of expiration. On expiration day it will roll over to next expiration date. Using weeklies as an example: if run on Friday (the day the option expires) the scraper will instead scrape the option chain expiring on the next Friday.
+* Scraper uses multiprocessing for higher throughput. Set workers to > 1 in settings.yml
 
-**Note** that this is in prototype phase and has some circular design issues + poor optimization
 
 ## Motivation
 
@@ -27,19 +29,21 @@ Hopefully the motivation is more clear now: to construct a granular history of i
 1. Python 3.11.4
 2. pyenv + pipenv
 3. redis7 server
-4. robinhood account with options enabled
-5. Optional: AWS east instance. API requests are about 2-3x faster than running local
+4. mongodb7 (feel free to fork if you prefer implementing a different DB)
+5. robinhood account with options enabled
+6. Optional: server with high # of CPU cores for fast scraping (6 core server throughput of 2k options / minute)
+
 
 ## Installation
 
-1. Get pyenv and pipenv and install python 3.11.4
+1. Install pyenv / python 3.11.4 / pipenv
 2. Clone, init environment, init submodules:
 
 ```
-$ git clone git@github.com:melder/iv_scraper.git
-$ cd iv_scraper
-$ pipenv install
-$ git submodule update --init --recursive
+git clone git@github.com:melder/iv_scraper.git
+cd iv_scraper
+git submodule update --init --recursive
+pipenv install
 ```
 
 3. In the config directory create settings.yml / vendors.yml and set them up with the appropriate values
@@ -62,9 +66,8 @@ $ python scraper.py scrape
 ### settings.yml
 
 ```
-version: 0.0.1
 options_symbols_csv_path: "./csv/options.csv"
-output_csv_path: "./out"
+workers: 6
 ```
 
 ### vendors.yml
@@ -79,14 +82,21 @@ hood:
 redis:
   host: localhost
   port: 6379
+
+mongo:
+  host: localhost
+  port: 27017
+  database: scraper
 ```
 
-### crontab
+### crontab example
 
 ```
+# FYI some distros don't support CRON_TZ
+
 CRON_TZ=America/New_York
 
-45 9-14 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
+45 9-15 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
 *  1    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py purge-exprs
 0  20   * * 0   ec2-user cd ~/iv_scraper; pipenv run python scraper.py audit-blacklist
 ```
@@ -98,13 +108,13 @@ Notes:
 
 ## Background Jobs
 
-To lay the foundation for scaling and optimization, a job queue is utilized instead of sequential scraping
+**Note:** scrape command performs all the queueing and then launching the workers (in sequence). But if you have personal preference on how to run the job processor scrape can be substituted with the following:
 
 ```
 # queuing: 
 python queue_jobs.py
 
-# worker
+# run workers
 # X = number of parallel workers
 rq worker-pool -b -n X
 ```
