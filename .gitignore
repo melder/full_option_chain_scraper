@@ -5,3 +5,4 @@ TODO.md
 .vscode
 config/settings.yml
 config/vendors.yml
+*__pycache__*
