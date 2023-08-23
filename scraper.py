@@ -70,7 +70,7 @@ class IvScraper:
                 # TODO: add some logging
                 pass
 
-    def __init__(self, ticker, expr, scrape_start_timestamp=None, db=None):
+    def __init__(self, ticker, expr, scrape_start_timestamp=None, client=None):
         self.ticker = ticker
         self.expr = expr or ExpirationDateCache(ticker).get_expr()
 
@@ -78,7 +78,8 @@ class IvScraper:
         self.scraped = False  # for blacklisting
 
         self.scrape_start_timestamp = scrape_start_timestamp
-        self.option_collection = Option(db) if db == None else None
+
+        self.option_collection = client[config.conf.mongo.database] if client else None
 
     def scrape(self):
         if not (self.ticker and self.expr):
@@ -136,7 +137,7 @@ class IvScraper:
         - options (array of dict JSON responses HOOD API returns)
         """
 
-        if self.scrape_start_timestamp and self.option_collection:
+        if self.scrape_start_timestamp:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
                 "ticker": self.ticker,
