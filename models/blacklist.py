@@ -1,4 +1,5 @@
 from helpers import redis_helpers as redh
+from models.expiration_date_cache import ExpirationDateCache
 
 
 class Blacklist:
@@ -36,18 +37,24 @@ class Blacklist:
         """
         remove symbols that no longer violate blacklist rules
         """
+
+        # TODO: circular dependencyish, need to rethink
         from scraper import IvScraper
 
         for ticker in redh.blacklisted_tickers():
+            print(ticker)
             # blacklisted from blacklist
             if ticker in cls.blacklist_exempt:
                 redh.blacklist_remove_ticker(ticker)
                 continue
 
-            scraper = IvScraper(ticker, expr=None)
+            scraper = IvScraper(
+                ticker,
+                expr=ExpirationDateCache(ticker, ignore_blacklist=True).get_expr(),
+            )
 
             # rule 1
-            if not scraper.scrape(insert_to_db=False):
+            if not scraper.scrape():
                 continue
 
             # rule 2

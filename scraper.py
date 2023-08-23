@@ -57,9 +57,10 @@ class IvScraper:
         exprs = ExpirationDateCache.get_all_exprs()
         timestamp = str(round(datetime.timestamp(datetime.utcnow())))
         db = config.mongo_db()
+        blacklisted_tickers = Blacklist.blacklisted_tickers()
         for ticker in get_all_options():
             print(ticker)
-            if not ignore_blacklist and ticker in Blacklist.blacklisted_tickers():
+            if not ignore_blacklist and ticker in blacklisted_tickers:
                 continue
             try:
                 scraper = cls(ticker, exprs.get(ticker), timestamp, db)
@@ -71,15 +72,15 @@ class IvScraper:
 
     def __init__(self, ticker, expr, scrape_start_timestamp=None, db=None):
         self.ticker = ticker
-        self.expr = expr or ExpirationDateCache(ticker).get_set_expr()
+        self.expr = expr or ExpirationDateCache(ticker).get_expr()
 
         self.price = 0
         self.scraped = False  # for blacklisting
 
         self.scrape_start_timestamp = scrape_start_timestamp
-        self.option = Option(db)
+        self.option_collection = Option(db) if db == None else None
 
-    def scrape(self, insert_to_db=True):
+    def scrape(self):
         if not (self.ticker and self.expr):
             return None
 
@@ -90,7 +91,7 @@ class IvScraper:
             if not (sorted_chain := self.process_chain(res)):
                 time.sleep(self.retry_sleep)
                 continue
-            if insert_to_db:
+            if self.option_collection:
                 self.insert_options_to_db(sorted_chain)
             self.scraped = True
             return True
@@ -134,7 +135,8 @@ class IvScraper:
         - created_at (datetime)
         - options (array of dict JSON responses HOOD API returns)
         """
-        if self.scrape_start_timestamp:
+
+        if self.scrape_start_timestamp and self.option_collection:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
                 "ticker": self.ticker,
@@ -146,7 +148,7 @@ class IvScraper:
                 "created_at": datetime.utcnow(),
                 "options": chain,
             }
-            self.option.create(document)
+            self.option_collection.create(document)
 
 
 if __name__ == "__main__":
