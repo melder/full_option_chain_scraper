@@ -1,5 +1,4 @@
 from helpers import redis_helpers as redh
-from models.expiration_date_cache import ExpirationDateCache
 
 
 class Blacklist:
@@ -50,7 +49,7 @@ class Blacklist:
 
             scraper = IvScraper(
                 ticker,
-                expr=ExpirationDateCache(ticker, ignore_blacklist=True).get_expr(),
+                expr=None,
             )
 
             # rule 1

@@ -1,6 +1,7 @@
 import time
 from helpers import redis_helpers as redh
 from helpers import date_helpers as dh
+from models.blacklist import Blacklist
 
 
 class ExpirationDateCache:
@@ -40,7 +41,7 @@ class ExpirationDateCache:
     dailies = ["SPY", "QQQ"]
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 12
+    retry_count = 18
     retry_sleep = 10.1
 
     @classmethod
@@ -68,12 +69,12 @@ class ExpirationDateCache:
         self.ignore_blacklist = ignore_blacklist
 
     def get_expr(self):
-        if not self.ignore_blacklist and self.ticker in redh.blacklisted_tickers():
+        if not self.ignore_blacklist and self.ticker in Blacklist.blacklisted_tickers():
             return None
         return redh.get_expr_date(self.ticker) or self.get_set_expr()
 
     def get_set_expr(self):
-        if not self.ignore_blacklist and self.ticker in redh.blacklisted_tickers():
+        if not self.ignore_blacklist and self.ticker in Blacklist.blacklisted_tickers():
             return None
 
         for _ in range(self.retry_count):
