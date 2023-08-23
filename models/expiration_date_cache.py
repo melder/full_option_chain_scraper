@@ -41,7 +41,7 @@ class ExpirationDateCache:
     dailies = ["SPY", "QQQ"]
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 18
+    retry_count = 15
     retry_sleep = 10.1
 
     @classmethod
