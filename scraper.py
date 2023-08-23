@@ -162,7 +162,7 @@ if __name__ == "__main__":
             print("Market is closed")
             sys.exit(0)
         # TODO: fix circular dependency
-        os.system("python queue_job.py")
+        os.system("python queue_jobs.py")
         if sys.platform != "darwin":
             os.system(f"rq worker-pool -b -n {config.conf.workers}")
         else:
