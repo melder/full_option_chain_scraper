@@ -69,8 +69,16 @@ def get_exprs_from_api(ticker=_DEFAULT_TICKER, cache=True):
 
 
 def next_expr_for_ticker(ticker):
-    if res := get_exprs_from_api(ticker, cache=False):
-        return res[0]
+    if not (res := get_exprs_from_api(ticker, cache=False)):
+        return ""
+
+    for i, iso_date in enumerate(res):
+        if date.today().isoformat() < iso_date:
+            return iso_date
+        try:
+            return res[i + 1]
+        except IndexError:
+            return ""
     return ""
 
 
