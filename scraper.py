@@ -70,9 +70,19 @@ class IvScraper:
                 # TODO: add some logging
                 pass
 
-    def __init__(self, ticker, expr, scrape_start_timestamp=None, client=None):
+    def __init__(
+        self,
+        ticker,
+        expr,
+        scrape_start_timestamp=None,
+        client=None,
+        ignore_blacklist=True,
+    ):
         self.ticker = ticker
-        self.expr = expr or ExpirationDateCache(ticker).get_expr()
+        self.expr = (
+            expr
+            or ExpirationDateCache(ticker, ignore_blacklist=ignore_blacklist).get_expr()
+        )
 
         self.price = 0
         self.scraped = False  # for blacklisting

@@ -50,6 +50,7 @@ class Blacklist:
             scraper = IvScraper(
                 ticker,
                 expr=None,
+                ignore_blacklist=True
             )
 
             # rule 1
