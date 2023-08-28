@@ -181,7 +181,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if sys.argv[1] == "populate-exprs":
-        if not dh.is_market_open_now() and sys.argv[1] == "scrape":
+        if not dh.is_market_open_now():
             print("Market is closed")
             sys.exit(0)
         ExpirationDateCache.populate(get_all_options())
