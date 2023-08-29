@@ -1,5 +1,5 @@
 from datetime import datetime
-from rq import Queue
+from rq import Retry, Queue
 
 from config import config
 
@@ -19,6 +19,7 @@ def queue_scraping():
             scrape_ticker_job.scrape_ticker_job,
             args=(ticker, timestamp),
             result_ttl=0,
+            retry=Retry(max=2),
         )
 
 

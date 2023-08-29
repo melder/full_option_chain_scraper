@@ -48,7 +48,7 @@ class IvScraper:
     """
 
     # scrape attempts assuming network/rate limit/etc errors
-    retry_count = 12
+    retry_count = 8
     retry_sleep = 10.1
 
     # blocking scrape not utilizing background workers
