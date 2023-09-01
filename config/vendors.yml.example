@@ -12,3 +12,6 @@ mongo:
   host: localhost
   port: 27017
   database: scraper
+  username: user
+  password: pass
+  auth_source: auth_db

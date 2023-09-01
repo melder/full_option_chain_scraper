@@ -51,8 +51,17 @@ if conf.get("mongo"):
     mongo_host = conf.mongo.host
     mongo_port = conf.mongo.port
     mongo_db = conf.mongo.database
+    mongo_user = conf.mongo.username
+    mongo_password = conf.mongo.password
+    mongo_auth_source = conf.mongo.auth_source
 
-    mongo = pymongo.MongoClient(mongo_host, mongo_port)[mongo_db]
+    mongo = pymongo.MongoClient(
+        mongo_host,
+        mongo_port,
+        username=mongo_user,
+        password=mongo_password,
+        authSource=mongo_auth_source,
+    )[mongo_db]
 
 
 def polygon_api_key():
