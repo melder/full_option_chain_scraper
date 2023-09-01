@@ -85,7 +85,13 @@ def mongo_client():
 
     from pymongo import MongoClient
 
-    return MongoClient(conf.mongo.host, conf.mongo.port)
+    return MongoClient(
+        conf.mongo.host,
+        conf.mongo.port,
+        username=conf.mongo.username,
+        password=conf.mongo.password,
+        authSource=conf.mongo.auth_source,
+    )
 
 
 def mongo_db():
