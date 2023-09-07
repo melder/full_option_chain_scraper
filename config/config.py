@@ -45,24 +45,6 @@ if conf.get("redis"):
 if conf.get("polygon"):
     polygon_api_key = conf.polygon.api_key
 
-if conf.get("mongo"):
-    import pymongo
-
-    mongo_host = conf.mongo.host
-    mongo_port = conf.mongo.port
-    mongo_db = conf.mongo.database
-    mongo_user = conf.mongo.username
-    mongo_password = conf.mongo.password
-    mongo_auth_source = conf.mongo.auth_source
-
-    mongo = pymongo.MongoClient(
-        mongo_host,
-        mongo_port,
-        username=mongo_user,
-        password=mongo_password,
-        authSource=mongo_auth_source,
-    )[mongo_db]
-
 
 def polygon_api_key():
     return conf.polygon.api_key
@@ -83,9 +65,9 @@ def mongo_client():
     if not conf.get("mongo"):
         return None
 
-    from pymongo import MongoClient
+    import pymongo
 
-    return MongoClient(
+    return pymongo.MongoClient(
         conf.mongo.host,
         conf.mongo.port,
         username=conf.mongo.username,
@@ -95,4 +77,6 @@ def mongo_client():
 
 
 def mongo_db():
+    if not conf.get("mongo"):
+        return None
     return mongo_client()[conf.mongo.database]

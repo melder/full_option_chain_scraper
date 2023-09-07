@@ -1,3 +1,6 @@
+from config import config
+
+
 class Option:
     """
     Persist option JSON data
@@ -10,6 +13,11 @@ class Option:
     """
 
     collection_name = "options"
+
+    @classmethod
+    def test_mongo(cls):
+        print("Returns estimated document count for 'options' collection")
+        return cls(config.mongo_db()).db.options.estimated_document_count()
 
     def __init__(self, database):
         self.db = database
