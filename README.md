@@ -97,6 +97,7 @@ mongo:
 
 CRON_TZ=America/New_York
 
+*  0    * * 1-5 ec2-user cd ~/iv_scraper; git submodule update --recursive --remote
 45 9-15 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
 *  1    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py purge-exprs
 1  2    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py populate-exprs
