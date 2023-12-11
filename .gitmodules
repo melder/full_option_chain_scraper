@@ -1,3 +1,4 @@
 [submodule "symbols_options_csvs"]
 	path = csv
 	url = git@github.com:melder/symbols_options_csvs.git
+	branch = main

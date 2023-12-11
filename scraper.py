@@ -183,7 +183,7 @@ if __name__ == "__main__":
         # TODO: fix circular dependency
         os.system("python queue_jobs.py")
         if sys.platform != "darwin":
-            os.system(f"rq worker-pool -b -n {config.conf.workers}")
+            os.system(f"rq worker-pool -b -n {config.conf.workers} -u redis://:{config.conf.redis.password}@{config.conf.redis.host}:{config.conf.redis.port}/0")
         else:
             os.system(
                 f"OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b -n {config.conf.workers}"

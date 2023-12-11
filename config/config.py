@@ -36,11 +36,12 @@ if conf.get("redis"):
 
     redis_host = conf.redis.host
     redis_port = conf.redis.port
-    redis = r.Redis(host=redis_host, port=redis_port, decode_responses=True)
-    redis_worker = r.Redis(host=redis_host, port=redis_port, decode_responses=False)
+    redis_password = conf.redis.password
+    redis = r.Redis(host=redis_host, port=redis_port, password=redis_password,  decode_responses=True)
+    redis_worker = r.Redis(host=redis_host, port=redis_port, password=redis_password, decode_responses=False)
 
     if conf.redis.get("om"):
-        os.environ["REDIS_OM_URL"] = f"redis://@{redis_host}:{redis_port}"
+        os.environ["REDIS_OM_URL"] = f"redis://:{redis_password}@{redis_host}:{redis_port}"
 
 if conf.get("polygon"):
     polygon_api_key = conf.polygon.api_key
@@ -57,7 +58,7 @@ def redis_client(decode_responses=True):
     from redis import Redis
 
     return Redis(
-        host=conf.redis.host, port=conf.redis.port, decode_responses=decode_responses
+        host=conf.redis.host, port=conf.redis.port, password=conf.redis.password, decode_responses=decode_responses
     )
 
 
