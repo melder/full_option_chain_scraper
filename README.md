@@ -96,10 +96,10 @@ mongo:
 
 CRON_TZ=America/New_York
 
-*  0    * * 1-5 ec2-user cd ~/full_option_chain_scraper; git submodule update --recursive --remote
-*  9-16 * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py scrape
-*  1    * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py purge-exprs
-1  2    * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py populate-exprs
+*/2  9-16    * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py scrape
+2    16      * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py scrape-force
+*    1       * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py purge-exprs
+1    2       * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py populate-exprs
 ```
 
 Notes:
