@@ -45,7 +45,7 @@ class IvScraper:
     def exec_blocking(cls):
         exprs = ExpirationDateCache.get_all_exprs()
         timestamp = str(round(datetime.timestamp(datetime.utcnow())))
-        db = config.mongo_db()
+        db = config.mongo_client()
 
         for ticker in config.crypto_tickers:
             print(ticker)
@@ -79,7 +79,7 @@ class IvScraper:
             return None
 
         for _ in range(self.retry_count):
-            if not (res := hood.condensed_option_chain(self.ticker, self.expr)):
+            if not (res := hood.get_option_chain(self.ticker, self.expr)):
                 time.sleep(self.retry_sleep)
                 continue
             if not (sorted_chain := self.process_chain(res)):
@@ -91,18 +91,12 @@ class IvScraper:
 
         return None
 
-    def process_chain(self, chain, depth=1):
+    def process_chain(self, chain):
         if not (price := hood.get_price(self.ticker)):
             return None
 
         self.price = float(price)
-        sorted_chain = sorted(
-            chain, key=lambda x: abs(self.price - float(x["strike_price"]))
-        )
-        if len(sorted_chain) == 4 * depth:
-            return sorted_chain
-
-        return None
+        return sorted(chain, key=lambda x: abs(self.price - float(x["strike_price"])))
 
     # v2 TODO:
     # 1. move to model

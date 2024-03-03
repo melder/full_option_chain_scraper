@@ -12,7 +12,7 @@ class Option:
     2. API data is from HOOD
     """
 
-    collection_name = ":".join([config.namespace, "options"])
+    collection_name = ".".join([config.namespace, "options"])
 
     @classmethod
     def test_mongo(cls):

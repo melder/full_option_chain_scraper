@@ -1,32 +1,21 @@
-# IV Scraper
+# Full option chain scraper
 
-* Iterates through all available options and scrapes implied volatility values of the 4 options closest to the spot price (calls + puts above/below spot). 
-* For those options stores their data in mongodb (IV, greeks, expiration, volume, open interest, bids / asks + prices, and much more ...)
-* Default expiration date is set to nearest one. So for a weekly it's generally friday. For a daily (SPY, QQQ) it will be the next market day. Scraper will collect IV data up to the day of expiration. On expiration day it will roll over to next expiration date. Using weeklies as an example: if run on Friday (the day the option expires) the scraper will instead scrape the option chain expiring on the next Friday.
+* Iterates through specified options and scrapes entire option chain
+* Store option chain data in MDB
+* Currently on works on weeklies
 * Scraper uses multiprocessing for higher throughput. Set workers to > 1 in settings.yml
-
 
 ## Motivation
 
-The only unquantifiable variable in the price of an option (or premium) is its volatility. The premium - what people are willing to pay - is essentially mass speculation of the future price movement of an option's underlying security. In essence the volatility is quantified by the premium itself, hence "implied" volatility. This can potentially be exploited since periods of unusually high or low _realized_ volatility tends to regress to the mean.
+This is a fork of https://github.com/melder/iv_scraper but it scrapes entire option chain of a small set of stocks (instead of scraping 4 option chains closest to current stock price for all stock that offers options).
 
-Simply put:
+The idea is to construct a series of volume / open interest over time to attempt to isolate "smart" money plays. In this case I'm trying to look into cryptocurrency related stocks / option chains because crypto is ripe and legal for manipulation. However this can be configured to track any collection of stocks.
 
-1. During periods of unusually low volatility it is better to go long (or buy) options since they are _relatively_ cheap
-2. Likewise when volatility is unusually high it is better to go short (or sell) options since they are _relatively_ expensive
-
-Delta neutral option strategies for each:
-
-1. Long: straddle, strangle
-2. Short: iron condor / butterfly
-
-A nice feature of these strategies is they don't require much equity. A few hundred dollars is enough to experiment for a while assuming good discipline and average luck.
-
-Hopefully the motivation is more clear now: to construct a granular history of implied volatility data with the objective of better identifying periods of high and low volatility. And since the data intends to be very comprehensive (tracks every stock that offers options), it will hopefully enable all sorts of creative analysis.
+**Since option chains can be very large it isn't recommended to track more than a couple dozen at a time**
 
 ## Requirements
 
-1. Python 3.11.4
+1. Python 3.12.2
 2. pyenv + pipenv
 3. redis7 server
 4. mongodb7 (feel free to fork if you prefer implementing a different DB)
@@ -36,7 +25,7 @@ Hopefully the motivation is more clear now: to construct a granular history of i
 
 ## Installation
 
-1. Install pyenv / python 3.11.4 / pipenv
+1. Install pyenv / python 3.12.2 / pipenv
 2. Clone, init environment, init submodules:
 
 ```
@@ -60,13 +49,21 @@ $ python scraper.py scrape
 * scrape-force - scrapes regardless of market open status
 * populate-exprs - retrieving expirations is API heavy so cache is utilized. This is intended to prepopulate before scraping to avoid rate limit slowdowns
 * purge-exprs - Deletes expiration date cache on weekly / monthly expiration days
+
 ## Configuration
 
 ### settings.yml
 
 ```
-options_symbols_csv_path: "./csv/options.csv"
-workers: 6
+namespace: option_chain_scraper
+workers: 3
+crypto_tickers:
+  - MSTR
+  - COIN
+  - BITO
+  - MARA
+  - CLSK
+  - RIOT
 ```
 
 ### vendors.yml
@@ -81,11 +78,15 @@ hood:
 redis:
   host: localhost
   port: 6379
+  password: pass # optional
 
 mongo:
   host: localhost
   port: 27017
-  database: scraper
+  database: production
+  username: user        # optional
+  password: pass        # optional
+  auth_source: auth_db  # optional
 ```
 
 ### crontab example
