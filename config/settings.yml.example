@@ -1,6 +1,6 @@
 namespace: option_chain_scraper
 workers: 3
-symbols:
+crypto_tickers:
   - MSTR
   - MARA
   - RIOT

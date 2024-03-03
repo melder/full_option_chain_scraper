@@ -78,15 +78,15 @@ def mongo_client():
 
     mongo_username = conf.mongo.get("username")
     mongo_password = conf.mongo.get("password")
-    mongo_authsource = conf.mongo.get("authsource")
+    mongo_auth_source = conf.mongo.get("auth_source")
 
-    if mongo_username and mongo_password and mongo_authsource:
+    if mongo_username and mongo_password and mongo_auth_source:
         mongo_cli = pymongo.MongoClient(
             conf.mongo.host,
             conf.mongo.port,
-            username=conf.mongo.username,
-            password=conf.mongo.password,
-            authSource=conf.mongo.auth_source,
+            username=mongo_username,
+            password=mongo_password,
+            authSource=mongo_auth_source,
         )
     else:
         mongo_cli = pymongo.MongoClient(
