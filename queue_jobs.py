@@ -1,16 +1,17 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from rq import Retry, Queue
 
 from config import config
 
-import scraper
 from workers import scrape_ticker_job
 
 
 def queue_scraping():
-    queue = Queue(connection=config.redis_client(decode_responses=False))
-    timestamp = str(round(datetime.timestamp(datetime.utcnow())))
-    for ticker in scraper.get_all_options():
+    queue = Queue(
+        config.namespace, connection=config.redis_client(decode_responses=False)
+    )
+    timestamp = str(round(datetime.timestamp(datetime.now(timezone.utc))))
+    for ticker in config.crypto_tickers:
         queue.enqueue(
             scrape_ticker_job.scrape_ticker_job,
             args=(ticker, timestamp),

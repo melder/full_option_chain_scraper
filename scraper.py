@@ -27,7 +27,7 @@ def write_to_csv(file_path, data, delimiter="\t"):
         csv_writer.writerow(data)
 
 
-class IvScraper:
+class OptionsScraper:
     """
     1. Scrapes implied volatility of options closest to
     at the money (minimum 4). E.g. for stock at $99.5
@@ -157,11 +157,11 @@ if __name__ == "__main__":
         os.system("python queue_jobs.py")
         if sys.platform != "darwin":
             os.system(
-                f"rq worker-pool -b -n {config.conf.workers} -u redis://:{config.conf.redis.password}@{config.conf.redis.host}:{config.conf.redis.port}/0"
+                f"rq worker-pool -b {config.namespace} -n {config.conf.workers} -u redis://:{config.conf.redis.password}@{config.conf.redis.host}:{config.conf.redis.port}/0"
             )
         else:
             os.system(
-                f"OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b -n {config.conf.workers}"
+                f"OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b {config.namespace} -n {config.conf.workers}"
             )
         sys.exit(0)
 

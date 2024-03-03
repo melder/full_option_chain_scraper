@@ -1,13 +1,13 @@
 # Full option chain scraper
 
-* Iterates through specified options and scrapes entire option chain
+* Iterates through specified tickers and scrapes entire option chain for those tickers
 * Store option chain data in MDB
-* Currently on works on weeklies
+* Currently only works on weeklies
 * Scraper uses multiprocessing for higher throughput. Set workers to > 1 in settings.yml
 
 ## Motivation
 
-This is a fork of https://github.com/melder/iv_scraper but it scrapes entire option chain of a small set of stocks (instead of scraping 4 option chains closest to current stock price for all stock that offers options).
+This is a fork of https://github.com/melder/iv_scraper but it scrapes entire option chain of a small set of stocks (instead of scraping 4 option chains closest to current stock price for all stocks that offers options).
 
 The idea is to construct a series of volume / open interest over time to attempt to isolate "smart" money plays. In this case I'm trying to look into cryptocurrency related stocks / option chains because crypto is ripe and legal for manipulation. However this can be configured to track any collection of stocks.
 
@@ -29,8 +29,8 @@ The idea is to construct a series of volume / open interest over time to attempt
 2. Clone, init environment, init submodules:
 
 ```
-git clone git@github.com:melder/iv_scraper.git
-cd iv_scraper
+git clone git@github.com:melder/full_option_chain_scraper.git
+cd full_option_chain_scraper
 git submodule update --init --recursive
 pipenv install
 ```
@@ -96,10 +96,10 @@ mongo:
 
 CRON_TZ=America/New_York
 
-*  0    * * 1-5 ec2-user cd ~/iv_scraper; git submodule update --recursive --remote
-45 9-15 * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py scrape
-*  1    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py purge-exprs
-1  2    * * 1-5 ec2-user cd ~/iv_scraper; pipenv run python scraper.py populate-exprs
+*  0    * * 1-5 ec2-user cd ~/full_option_chain_scraper; git submodule update --recursive --remote
+*  9-16 * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py scrape
+*  1    * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py purge-exprs
+1  2    * * 1-5 ec2-user cd ~/full_option_chain_scraper; pipenv run python scraper.py populate-exprs
 ```
 
 Notes:
@@ -117,5 +117,10 @@ python queue_jobs.py
 
 # run workers
 # X = number of parallel workers
-rq worker-pool -b -n X
+
+rq worker-pool -b <namespace> -n X
+
+# osx:
+
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES rq worker-pool -b <namespace> -n 5
 ```
