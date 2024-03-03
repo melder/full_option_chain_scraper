@@ -7,12 +7,12 @@ hood:
 redis:
   host: localhost
   port: 6379
-  password: pass
+  # password: pass
 
 mongo:
   host: localhost
   port: 27017
-  database: scraper
-  username: user
-  password: pass
-  auth_source: auth_db
+  database: production
+  # username: user
+  # password: pass
+  # auth_source: auth_db

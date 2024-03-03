@@ -1,2 +1,7 @@
-options_symbols_csv_path: "./csv/options.csv"
+namespace: option_chain_scraper
 workers: 3
+symbols:
+  - MSTR
+  - MARA
+  - RIOT
+  - BITO

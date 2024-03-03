@@ -28,38 +28,46 @@ class DictAsMember(dict):
 
 conf = DictAsMember(parse_yaml_settings() | parse_yaml_vendors())
 
-if conf.get("discord_webhooks"):
-    discord_webhooks = conf.discord_webhooks
+namespace = conf.namespace
+crypto_tickers = conf.crypto_tickers
 
 if conf.get("redis"):
     import redis as r
 
     redis_host = conf.redis.host
     redis_port = conf.redis.port
-    redis_password = conf.redis.password
-    redis = r.Redis(host=redis_host, port=redis_port, password=redis_password,  decode_responses=True)
-    redis_worker = r.Redis(host=redis_host, port=redis_port, password=redis_password, decode_responses=False)
+    redis_password = conf.redis.get("password")
 
-    if conf.redis.get("om"):
-        os.environ["REDIS_OM_URL"] = f"redis://:{redis_password}@{redis_host}:{redis_port}"
-
-if conf.get("polygon"):
-    polygon_api_key = conf.polygon.api_key
-
-
-def polygon_api_key():
-    return conf.polygon.api_key
+    if redis_password:
+        redis_cli = r.Redis(
+            host=redis_host,
+            port=redis_port,
+            password=redis_password,
+            decode_responses=True,
+        )
+        redis_worker = r.Redis(
+            host=redis_host,
+            port=redis_port,
+            password=redis_password,
+            decode_responses=False,
+        )
+    else:
+        redis_cli = r.Redis(host=redis_host, port=redis_port, decode_responses=True)
+        redis_worker = r.Redis(
+            host=redis_host,
+            port=redis_port,
+            decode_responses=False,
+        )
 
 
 def redis_client(decode_responses=True):
     if not conf.get("redis"):
         return None
 
-    from redis import Redis
+    if decode_responses:
+        return redis_cli
 
-    return Redis(
-        host=conf.redis.host, port=conf.redis.port, password=conf.redis.password, decode_responses=decode_responses
-    )
+    return redis_worker
 
 
 def mongo_client():
@@ -68,13 +76,25 @@ def mongo_client():
 
     import pymongo
 
-    return pymongo.MongoClient(
-        conf.mongo.host,
-        conf.mongo.port,
-        username=conf.mongo.username,
-        password=conf.mongo.password,
-        authSource=conf.mongo.auth_source,
-    )
+    mongo_username = conf.mongo.get("username")
+    mongo_password = conf.mongo.get("password")
+    mongo_authsource = conf.mongo.get("authsource")
+
+    if mongo_username and mongo_password and mongo_authsource:
+        mongo_cli = pymongo.MongoClient(
+            conf.mongo.host,
+            conf.mongo.port,
+            username=conf.mongo.username,
+            password=conf.mongo.password,
+            authSource=conf.mongo.auth_source,
+        )
+    else:
+        mongo_cli = pymongo.MongoClient(
+            conf.mongo.host,
+            conf.mongo.port,
+        )
+
+    return mongo_cli
 
 
 def mongo_db():
