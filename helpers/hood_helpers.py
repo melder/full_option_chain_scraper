@@ -22,6 +22,13 @@ def get_chains(ticker):
     return rh.options.get_chains(ticker)
 
 
+def get_option_chain(ticker, expr, option_type=None):
+    if option_type is None or option_type not in ["call", "put"]:
+        return rh.options.find_options_by_expiration(ticker, expr)
+
+    return rh.options.find_options_by_expiration(ticker, expr, optionType=option_type)
+
+
 def get_option_chain_by_strike(ticker, expr, strike):
     try:
         return rh.options.find_options_by_expiration_and_strike(ticker, expr, strike)

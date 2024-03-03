@@ -1,40 +1,10 @@
 from config import config  # pylint: disable=wrong-import-order
 from helpers.general_helpers import key_join
 
-r = config.redis
+r = config.redis_client()
 
 
-_NAMESPACE = "iv_scraper"
-
-#######################
-# BLACKLISTED OPTIONS #
-#######################
-
-_BLACKLIST_KEY = key_join(_NAMESPACE, "blacklist")
-
-
-def blacklist_append(ticker, failure_count):
-    return r.hincrby(_BLACKLIST_KEY, ticker, failure_count)
-
-
-def blacklist_get_failure_count_for_ticker(ticker):
-    return r.hget(_BLACKLIST_KEY, ticker)
-
-
-def blacklist_all_failure_counts():
-    return r.hgetall(_BLACKLIST_KEY)
-
-
-def blacklisted_tickers():
-    return list(blacklist_all_failure_counts().keys())
-
-
-def blacklist_remove_ticker(ticker):
-    return r.hdel(_BLACKLIST_KEY, ticker)
-
-
-def blacklist_purge():
-    return r.delete(_BLACKLIST_KEY)
+_NAMESPACE = config.namespace
 
 
 ###########################

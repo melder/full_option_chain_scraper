@@ -12,7 +12,7 @@ import pytz
 from helpers.general_helpers import key_join
 from helpers import hood_helpers as hood
 
-r = config.redis
+r = config.redis_client()
 
 _DEFAULT_TICKER = "AAPL"
 _DEFAULT_TICKER_DAILIES = "SPY"

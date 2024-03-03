@@ -12,12 +12,12 @@ class Option:
     2. API data is from HOOD
     """
 
-    collection_name = "options"
+    collection_name = ":".join([config.namespace, "options"])
 
     @classmethod
     def test_mongo(cls):
-        print("Returns estimated document count for 'options' collection")
-        return cls(config.mongo_db()).db.options.estimated_document_count()
+        print(f"Returns estimated document count for {cls.collection_name} collection")
+        return cls(config.mongo_db()).db[cls.collection_name].estimated_document_count()
 
     def __init__(self, database):
         self.db = database
