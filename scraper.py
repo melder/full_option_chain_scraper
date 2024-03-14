@@ -4,7 +4,7 @@ import csv
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, date
 from pprint import pprint  # pylint: disable=unused-import
 
 import helpers.date_helpers as dh
@@ -126,6 +126,9 @@ class OptionsScraper:
         if self.scrape_start_timestamp and self.option_collection:
             document = {
                 "scraper_timestamp": self.scrape_start_timestamp,
+                "scraper_iso_date": date.fromtimestamp(
+                    int(self.scrape_start_timestamp)
+                ).isoformat(),
                 "ticker": self.ticker,
                 "expiration": self.expr,
                 "price": float(self.price),
