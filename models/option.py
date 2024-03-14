@@ -19,8 +19,12 @@ class Option:
         print(f"Returns estimated document count for {cls.collection_name} collection")
         return cls(config.mongo_db()).db[cls.collection_name].estimated_document_count()
 
-    def __init__(self, database):
-        self.db = database
+    @classmethod
+    def get_all(cls, **filters):
+        return cls().find(filters)
+
+    def __init__(self, database=None):
+        self.db = database if database is not None else config.mongo_db()
         self.collection = self.db[self.collection_name]
 
     def validate_properties(self, docs):
