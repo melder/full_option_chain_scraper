@@ -16,6 +16,10 @@ redis = "*"
 rq = "*"
 multiprocess = "*"
 pymongo = "*"
+pandas = "*"
+scipy = "*"
+flask = "*"
+gunicorn = "*"
 
 [dev-packages]
 
