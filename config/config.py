@@ -28,8 +28,12 @@ class DictAsMember(dict):
 
 conf = DictAsMember(parse_yaml_settings() | parse_yaml_vendors())
 
+version = conf.version
 namespace = conf.namespace
-crypto_tickers = conf.crypto_tickers
+
+crypto_tickers = list(set(conf.crypto_tickers))
+anomalies = conf.get("anomalies", {})
+
 
 if conf.get("redis"):
     import redis as r
@@ -101,3 +105,7 @@ def mongo_db():
     if not conf.get("mongo"):
         return None
     return mongo_client()[conf.mongo.database]
+
+
+def discord_webhooks():
+    return conf.get("discord", {}).get("webhooks", {})

@@ -1,7 +1,14 @@
+version: 0.0.1
 namespace: option_chain_scraper
+
 workers: 3
 crypto_tickers:
   - MSTR
   - MARA
   - RIOT
   - BITO
+
+anomalies:
+  normal:
+    min_samples: 30
+    stdev: 3

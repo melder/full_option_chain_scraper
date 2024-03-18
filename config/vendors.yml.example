@@ -16,3 +16,8 @@ mongo:
   # username: user
   # password: pass
   # auth_source: auth_db
+
+discord:
+  webhooks:
+    anomaly: https://discord.com/api/webhooks/abc
+    something_else: https://discord.com/api/webhooks/def
