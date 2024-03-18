@@ -19,5 +19,9 @@ mongo:
 
 discord:
   webhooks:
-    anomaly: https://discord.com/api/webhooks/abc
-    something_else: https://discord.com/api/webhooks/def
+    anomaly:
+      url: https://discord.com/api/webhooks/abc
+      enabled: true
+    something_else:
+      url: https://discord.com/api/webhooks/def
+      enabled: false

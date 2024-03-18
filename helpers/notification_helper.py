@@ -23,14 +23,18 @@ class DiscordNotifier:
 
     @classmethod
     def anomaly_notifier(cls, config_key="anomaly"):
-        webhook = config.discord_webhooks().get(config_key)
+        webhook = config.discord_webhooks().get(config_key, {})
         if not webhook:
             raise DiscordNotifierException(f"{config_key} webhook not set!")
 
-        return cls(webhook)
+        url, enabled = webhook.get("url"), webhook.get("enabled")
+        if not (enabled or url):
+            return None
 
-    def __init__(self, webhook, test_mode=False):
-        self.webhook = webhook
+        return cls(url)
+
+    def __init__(self, webhook_url, test_mode=False):
+        self.webhook_url = webhook_url
         self.test_mode = test_mode
 
     def debug(self, msg):
@@ -59,7 +63,9 @@ class DiscordNotifier:
 
         for _ in range(self.retry_count):
             try:
-                req = request.Request(self.webhook, headers=_WEBHOOK_HEADERS, data=data)
+                req = request.Request(
+                    self.webhook_url, headers=_WEBHOOK_HEADERS, data=data
+                )
                 request.urlopen(req)
                 break
             except Exception:
