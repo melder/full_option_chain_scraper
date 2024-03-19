@@ -1,14 +1,19 @@
 from collections import defaultdict
 from flask import Flask, jsonify, request
 from models.option import Option
+from config import config
 
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello_world():
-    data = {"results": "test"}
-    return jsonify(data)
+@app.route("/tickers")
+def tickers():
+    res = {}
+    res["data"] = config.crypto_tickers
+    res["count"] = len(config.crypto_tickers)
+    res["status"] = 200
+
+    return jsonify(res)
 
 
 @app.route("/option_chains")
@@ -101,7 +106,7 @@ def timestamps():
     return res
 
 
-## Uncomment if testing locally
+# # Uncomment if testing locally
 # @app.after_request
 # def add_header(response):
 #     response.headers["Access-Control-Allow-Origin"] = "*"

@@ -31,7 +31,13 @@ conf = DictAsMember(parse_yaml_settings() | parse_yaml_vendors())
 version = conf.version
 namespace = conf.namespace
 
-crypto_tickers = list(set(conf.crypto_tickers))
+crypto_tickers = []
+tmp_set = set()
+for ticker in conf.tickers:
+    if ticker not in tmp_set:
+        tmp_set.add(ticker)
+        crypto_tickers.append(ticker)
+
 anomalies = conf.get("anomalies", {})
 
 

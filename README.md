@@ -89,6 +89,25 @@ mongo:
   auth_source: auth_db  # optional
 ```
 
+### MDB indexes
+
+Recommended MDB indexes
+
+```
+[
+  { v: 2, key: { _id: 1 }, name: '_id_' },
+  { v: 2, key: { ticker: 1 }, name: 'ticker_1' },
+  { v: 2, key: { expiration: 1 }, name: 'expiration_1' },
+  { v: 2, key: { scraper_timestamp: 1 }, name: 'scraper_timestamp_1' },
+  {
+    v: 2,
+    key: { ticker: 1, scraper_timestamp: 1 },
+    name: 'ticker_1_scraper_timestamp_1',
+    unique: true
+  }
+]
+```
+
 ### crontab example
 
 ```

@@ -2,7 +2,7 @@ version: 0.0.1
 namespace: option_chain_scraper
 
 workers: 3
-crypto_tickers:
+tickers:
   - MSTR
   - MARA
   - RIOT

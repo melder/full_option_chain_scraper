@@ -48,7 +48,6 @@ class OptionsScraper:
         db = config.mongo_client()
 
         for ticker in config.crypto_tickers:
-            print(ticker)
             try:
                 scraper = cls(ticker, exprs.get(ticker), timestamp, db)
                 scraper.scrape()

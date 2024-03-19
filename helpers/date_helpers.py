@@ -16,7 +16,7 @@ r = config.redis_client()
 
 _DEFAULT_TICKER = "AAPL"
 _DEFAULT_TICKER_DAILIES = "SPY"
-_TIMEZONE = pytz.timezone("US/Eastern")
+_TIMEZONE = pytz.timezone("America/New_York")
 _NORMAL_DAILY_MARKET_SECONDS = 23400
 
 
